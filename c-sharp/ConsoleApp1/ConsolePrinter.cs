@@ -1,27 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
 
-namespace ConsoleApp1
+namespace JokeGenerator
 {
-    public class ConsolePrinter
+    public interface IPrinter
     {
-        public static object PrintValue;
+        void WriteLine(string value);
+    }
 
-        public ConsolePrinter Value(string value)
+    public class ConsolePrinter : IPrinter
+    {
+        public void WriteLine(string value)
         {
-            PrintValue = value;
-            return this;
-        }
-
-        public override string ToString()
-        {
-            Console.WriteLine(PrintValue);
-            return null;
+            Console.WriteLine(value);
         }
     }
 }

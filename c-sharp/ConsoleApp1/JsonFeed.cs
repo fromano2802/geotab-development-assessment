@@ -1,27 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace ConsoleApp1
+namespace JokeGenerator
 {
-    class JsonFeed
+    public interface IJsonFeed
     {
-        static string _url = "";
+        Task<string[]> GetRandomJokesAsync(string firstname, string lastname, string category);
+        Task<dynamic> GetNameAsync();
+        Task<string[]> GetCategoriesAsync();
+    }
 
-        public JsonFeed() { }
-        public JsonFeed(string endpoint, int results)
+    public class JsonFeed : IJsonFeed
+    {
+        private readonly Uri _baseChuckNorrisUri = new("https://api.chucknorris.io");
+        private readonly Uri _namesUri = new("https://www.names.privserv.com/api/");
+
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public JsonFeed(IHttpClientFactory httpClientFactory)
         {
-            _url = endpoint;
+            _httpClientFactory = httpClientFactory;
         }
-        
-		public static string[] GetRandomJokes(string firstname, string lastname, string category)
+
+        public async Task<string[]> GetRandomJokesAsync(string firstname, string lastname, string category)
 		{
-			HttpClient client = new HttpClient();
-			client.BaseAddress = new Uri(_url);
+			HttpClient client = _httpClientFactory.CreateClient();
+			client.BaseAddress = _baseChuckNorrisUri;
 			string url = "jokes/random";
 			if (category != null)
 			{
@@ -32,38 +39,32 @@ namespace ConsoleApp1
 				url += category;
 			}
 
-            string joke = Task.FromResult(client.GetStringAsync(url).Result).Result;
+            string joke = await client.GetStringAsync(url);
 
             if (firstname != null && lastname != null)
             {
-                int index = joke.IndexOf("Chuck Norris");
-                string firstPart = joke.Substring(0, index);
-                string secondPart = joke.Substring(0 + index + "Chuck Norris".Length, joke.Length - (index + "Chuck Norris".Length));
-                joke = firstPart + " " + firstname + " " + lastname + secondPart;
+                joke = joke.Replace("Chuck Norris", $"{firstname} {lastname}");
             }
 
             return new string[] { JsonConvert.DeserializeObject<dynamic>(joke).value };
         }
 
-        /// <summary>
-        /// returns an object that contains name and surname
-        /// </summary>
-        /// <param name="client2"></param>
-        /// <returns></returns>
-		public static dynamic Getnames()
+		public async Task<dynamic> GetNameAsync()
 		{
-			HttpClient client = new HttpClient();
-			client.BaseAddress = new Uri(_url);
-			var result = client.GetStringAsync("").Result;
+			var client = _httpClientFactory.CreateClient();
+            var result = await client.GetStringAsync(_namesUri);
 			return JsonConvert.DeserializeObject<dynamic>(result);
-		}
+        }
 
-		public static string[] GetCategories()
+		public async Task<string[]> GetCategoriesAsync()
 		{
-			HttpClient client = new HttpClient();
-			client.BaseAddress = new Uri(_url);
+            var client = _httpClientFactory.CreateClient();
 
-			return new string[] { Task.FromResult(client.GetStringAsync("categories").Result).Result };
+            var uri = new UriBuilder(_baseChuckNorrisUri) {Path = "categories"}.Uri;
+
+            var result = await client.GetFromJsonAsync<string[]>(uri);
+
+			return result;
 		}
     }
 }
